@@ -26,7 +26,7 @@
 
 ### (1) IntelliJ 내에서 Git 완전 초기화
 1. **상단 메뉴 → Git → 원격 관리 / 연결 해제**
-2. `.git` 폴더 직접 삭제 (`E:\study\Java.oraclesql\ideaProject\OGV4\.git`) //삭제할때 파일에서 보기란 -> 표시 -> 숨김을 체크해줘야함. <img width="331" height="497" alt="image" src="https://github.com/user-attachments/assets/1f4a44d5-3bbf-4061-9ed5-77f674caa6c9" />
+2. `.git` 폴더 직접 삭제 (`E:\....\.git`) //삭제할때 파일에서 보기란 -> 표시 -> 숨김을 체크해줘야함. <img width="331" height="497" alt="image" src="https://github.com/user-attachments/assets/1f4a44d5-3bbf-4061-9ed5-77f674caa6c9" />
 
 3. IntelliJ 캐시 초기화  
    - `파일 → 캐시 무효화 / 다시 시작`  

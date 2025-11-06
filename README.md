@@ -169,4 +169,242 @@ git status
 * GitHub와의 연결은 **“remote add origin → push -u”** 한 줄로 끝난다.
 * Copilot은 플러그인 설치 후 재로그인하면 자동으로 연동된다.
 
-```
+---
+## 📅 2025-11-05 — 🚀 React 구축 + Spring Boot 연동 (CORS 설정 및 REST API 테스트 포함)
+## 🧩 1️⃣ IntelliJ 기본 설정
+
+### 🌱 새 프로젝트 생성
+- **File → New → Project → Spring Initializr**
+- **Dependencies 추가 (Spring Boot 백엔드 핵심 세트)**  
+
+| Dependency | 역할 설명 |
+|-------------|------------|
+| **Lombok** | 반복되는 코드(Setter, Getter, Constructor 등) 자동 생성 |
+| **Spring Web** | REST API 및 MVC 웹 애플리케이션 구축 |
+| **Spring Security** | 인증(Authentication)과 인가(Authorization) 기능 제공 |
+| **JDBC API** | 자바와 DB를 연결하는 기본 API |
+| **Spring Data JPA** | ORM(Object Relational Mapping) 기반의 CRUD 자동화 |
+| **Oracle Driver** | 오라클 DB 연결용 드라이버 |
+| **Validation** | DTO, 폼 데이터 유효성 검증 |
+| **CycloneDX SBOM support** | 프로젝트 의존성 보안 추적 도구 |
+
+📘 **정리:**  
+Spring Boot는 Web + JPA + Oracle이 핵심 축이며,  
+Security와 Validation은 안전한 데이터 처리를 위한 필수 구성요소다.
+
+---
+
+## ⚙️ 2️⃣ Node.js 설치 및 React 환경 구축
+
+### 🧭 Node.js 설치
+1. 공식 사이트: [https://nodejs.org/ko/download](https://nodejs.org/ko/download)  
+2. 사용하는 OS(Windows, macOS 등)에 맞는 설치 프로그램 실행  
+3. 설치 후 IntelliJ 터미널 또는 PowerShell에서 버전 확인:
+   ```bash
+   node -v
+   npm -v
+명령어	역할
+node -v	Node.js 런타임 버전 확인 (JS 실행 엔진 확인용)
+npm -v	Node Package Manager 버전 확인 (패키지 관리 툴)
+
+📂 React 프로젝트 생성
+터미널에서 원하는 위치로 이동 (예: cd src/main)
+
+다음 명령어로 React 앱 생성:
+
+bash
+코드 복사
+npx create-react-app frontend
+→ frontend 폴더가 생기고 내부 구조 자동 생성됨.
+
+이후 경로 이동:
+
+bash
+코드 복사
+cd frontend
+📦 React Router & Hook Form 설치
+bash
+코드 복사
+npm install react-router-dom
+npm install react-hook-form
+패키지명	역할
+react-router-dom	페이지 간 이동(라우팅)을 담당하는 라이브러리
+react-hook-form	입력 폼 데이터를 간단하게 관리할 수 있는 훅(Hook) 기반 폼 라이브러리
+
+📘 예시:
+
+jsx
+코드 복사
+// react-hook-form 예제
+import { useForm } from "react-hook-form";
+
+function MyForm() {
+  const { register, handleSubmit } = useForm();
+  const onSubmit = data => console.log(data);
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("name")} placeholder="이름 입력" />
+      <input {...register("email")} placeholder="이메일 입력" />
+      <button type="submit">전송</button>
+    </form>
+  );
+}
+🧠 3️⃣ 실행 방법
+프로젝트 실행 경로 이동:
+
+bash
+코드 복사
+cd src/main/frontend
+React 개발 서버 실행:
+
+bash
+코드 복사
+npm start
+→ 브라우저가 자동으로 열리고 http://localhost:3000에서 확인 가능.
+
+백엔드(Spring Boot)는 http://localhost:8080에서 작동 중이어야 하며,
+React ↔ Spring 통신을 위해 CORS 설정 또는 Proxy 설정을 반드시 추가해야 함.
+
+⚙️ 4️⃣ Spring Boot ↔ React CORS 설정
+React 개발 서버(3000번 포트)에서 Spring Boot API(8080 포트)로 요청을 보낼 때,
+브라우저 보안 정책(Same-Origin Policy) 때문에 기본적으로 막힌다.
+이때 Spring의 CORS 설정으로 포트 간 통신을 허용해야 한다.
+
+✅ WebConfig.java 예시
+java
+코드 복사
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/api/**")                         // /api로 시작하는 모든 경로 허용
+                .allowedOrigins("http://localhost:3000")        // React 개발 서버 주소
+                .allowedMethods("GET", "POST", "PUT", "DELETE") // 허용할 메서드
+                .allowedHeaders("*")                            // 모든 헤더 허용
+                .allowCredentials(true)                         // 인증 정보(쿠키, 세션) 허용
+                .maxAge(3600);                                  // preflight 캐시 1시간 유지
+    }
+}
+⚙️ 작동 원리
+React에서 fetch("http://localhost:8080/api/member/main") 요청을 보낼 때,
+브라우저가 먼저 OPTIONS (Preflight) 요청을 보낸다.
+
+위 설정 덕분에 Spring이 “이건 3000번에서 온 요청이니 괜찮아.” 하고 허락함.
+
+그 다음 실제 GET/POST 요청이 정상적으로 수행되고 JSON 응답을 받는다.
+
+🧠 참고
+Spring Security를 사용하는 경우엔 Security 설정에도 CORS를 허용해야 한다:
+
+java
+코드 복사
+@Bean
+SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .cors(cors -> {})  // WebConfig의 CORS 설정 적용
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/api/**").permitAll()
+            .anyRequest().permitAll()
+        );
+    return http.build();
+}
+🧪 5️⃣ REST API Test 방법
+프론트엔드와 백엔드가 완전히 분리된 구조에서는
+백엔드가 정상적으로 응답하는지 미리 테스트하는 게 중요하다.
+이를 위해 REST Client나 ARC (Advanced REST Client) 같은 도구를 사용한다.
+
+✅ 방법 1. Visual Studio Code REST Client
+VSCode에서 REST Client 확장팩을 설치한다.
+
+.http 또는 .rest 파일을 만들어 아래처럼 작성:
+
+http
+코드 복사
+### GET 요청 예시
+GET http://localhost:8080/api/member/main
+
+### POST 요청 예시
+POST http://localhost:8080/api/member
+Content-Type: application/json
+
+{
+  "name": "홍길동",
+  "email": "test@example.com"
+}
+Send Request 버튼을 눌러 바로 결과를 확인할 수 있다.
+GET, POST, PUT, DELETE 요청 모두 지원.
+
+✅ 방법 2. ARC (Advanced REST Client)
+다운로드: https://github.com/advanced-rest-client/arc-electron/releases
+(출처 표기하면 사용 가능. 오픈소스 클라이언트 프로그램)
+
+설치 후, 다음과 같은 REST 테스트 수행 가능:
+
+GET: 데이터 조회 (/api/member/main)
+
+POST: 새 데이터 추가
+
+PUT: 데이터 수정
+
+DELETE: 데이터 삭제
+
+추가 기능: 로그인, 로그아웃, 세션 토큰 테스트 등
+
+📌 REST 테스트의 목적
+
+상황	의미
+❌ 테스트 실패	백엔드(Spring Boot) 쪽 오류 가능성 99%
+✅ 테스트 성공	프론트엔드(React) 연결 로직 오류 가능성 99%
+
+→ 즉, REST Client로 백엔드를 독립적으로 검증함으로써
+React 문제인지, API 문제인지 빠르게 분리할 수 있다.
+
+⚠️ 6️⃣ DB 연결 주의사항
+application.properties 혹은 application.yml에 정확한 DB 정보 입력 필수:
+
+properties
+코드 복사
+spring.datasource.url=jdbc:oracle:thin:@localhost:1521:FREE
+spring.datasource.username=guro
+spring.datasource.password=guro1234
+spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+⚠️ 오타나 포트, SID 오류가 있으면 Spring 서버가 실행되지 않는다.
+JDBC URL, username, password를 꼭 확인할 것.
+
+✍️ 첨언 (by Moro)
+React는 프론트엔드(View), Spring Boot는 백엔드(API) 역할을 수행한다.
+두 영역은 fetch()를 통해 JSON 데이터를 주고받는다.
+
+폴더 구조를 명확히 분리해야 유지보수가 쉽다.
+(backend / frontend 경로를 구분)
+
+커밋 시 .gitignore에 **node_modules/**는 반드시 제외할 것.
+(용량이 크고 npm install로 언제든 재생성 가능)
+
+addCorsMappings()는 React(3000) 과 Spring Boot(8080) 간 통신을 허용하는 핵심 브릿지다.
+없으면 CORS 에러로 JSON 통신이 차단된다.
+
+REST Client / ARC를 활용하면 백엔드를 프론트와 독립적으로 검증할 수 있다.
+
+✅ 요약
+
+Spring Boot 기본 세팅 및 Dependencies 구성
+
+Node.js / npm 설치 및 React 환경 구성
+
+react-router-dom / react-hook-form 설치  
+
+CORS 설정으로 3000 ↔ 8080 포트 연결 허용
+
+REST API 테스트 도구(REST Client, ARC) 활용
+
+DB 연결 설정 및 서버 실행 확인
+
+이제 Spring Boot (백엔드) ↔ React (프론트엔드) 연동이 완료되고,
+REST 테스트 도구를 통해 API 안정성까지 확인할 수 있다.

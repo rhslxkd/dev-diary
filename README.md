@@ -410,66 +410,97 @@ DB 연결 설정 및 서버 실행 확인
 REST 테스트 도구를 통해 API 안정성까지 확인할 수 있다.
 
 ---
-## 📘 2025.11.17 — OGV Project: Python Agent 개발 기록
+##  2025-11-17 — OGV Project: Python Agent 개발 기록
 
-## 🧩 1. Python Agent 디렉터리 생성
+###  배경
 
-OGV(Spring Boot + React) 프로젝트 내부에 `python-agent/` 디렉터리를 생성함.
+OGV(Spring Boot + React) 프로젝트에 **Python 기반 AI Agent 서버**를 추가했다.  
+Java/Spring이 메인 백엔드라면, 이 Python Agent는:
 
-**목표**
-- Google Gemini + ADK 기반 Agent 서버 구축  
-- React 프론트엔드와 통신하는 독립 서버 구조  
-- 향후 벡터 DB + 뉴스 자동화 파이프라인 기반 마련  
+- Google Gemini + ADK 기반 AI 기능 담당
+- React 프론트엔드와 HTTP로 통신하는 **독립 서버**
+- 향후 벡터 DB + 뉴스 자동화 파이프라인의 기반 역할
 
+을 하는 별도 모듈로 설계했다.
 
----
+* * *
 
-## 🧪 2. 가상환경(venv) 생성 및 활성화
+##  1. python-agent 디렉터리 생성
 
-### ✔ 왜 필요한가?
-- 패키지 충돌 방지  
-- 프로젝트별 독립 환경 제공  
-- OS 차이 제거  
-- “환경은 venv, 코드는 GitHub”로 역할 분리  
+### (1) 디렉터리 구조
 
-### ▶ 생성
-```bash
+기존 OGV 프로젝트 루트 아래에 `python-agent/` 디렉터리를 생성:
+
+```text
+OGV4/
+ ├─ src/
+ ├─ python-agent/
+ │   ├─ app.py
+ │   ├─ venv/        (Git에 올리지 않음)
+ │   └─ requirements.txt
+ └─ ...
+역할 분리:
+
+Spring Boot → 메인 비즈니스 API / DB 트랜잭션
+
+python-agent → LLM 호출, 뉴스 요약, 에이전트 오케스트레이션
+
+2. 가상환경(venv) 생성 및 활성화
+(1) venv를 쓰는 이유
+프로젝트별 패키지 버전 충돌 방지
+
+운영체제/개발 환경이 달라도 동일한 환경 재현 가능
+
+“환경은 venv가 관리, 코드는 GitHub가 관리” 원칙 유지
+
+(2) venv 생성
+bash
+코드 복사
+cd python-agent
 python -m venv venv
-▶ 활성화
+(3) venv 활성화 (Windows)
 bash
 코드 복사
 venv\Scripts\activate
-📦 3. 필수 패키지 설치
+터미널에 (venv) 프롬프트가 보이면 활성화 성공.
+
+3. 필수 패키지 설치
+(1) 설치 명령어
 bash
 코드 복사
 pip install fastapi uvicorn[standard] google-genai google-adk
-패키지 설명
+(2) 각 패키지 역할
+FastAPI: 경량 Python API 서버 프레임워크
 
-FastAPI: Python 경량 API 서버
+Uvicorn: FastAPI 실행 ASGI 서버 (Spring의 Tomcat 느낌)
 
-Uvicorn: FastAPI 실행기 (Spring의 Tomcat 역할)
+google-genai: Gemini API 공식 Python SDK
 
-google-genai: Gemini 공식 Python SDK
+google-adk: Agent Development Kit (멀티 에이전트, 툴, 러너 제공)
 
-google-adk: Agent Development Kit (멀티 에이전트 구성)
+설치 후에는 requirements.txt로 버전 스냅샷을 남기는 게 좋다:
 
-🔐 4. Gemini API Key 환경변수 설정
-✔ 왜 코드에 Key를 쓰면 안 되는가?
-GitHub에 올라가는 순간 즉시 유출
-
-제3자가 마음대로 API 호출
-
-요금 폭탄 + 악용 위험 발생
-
-Key는 항상 OS 환경변수에만 저장
-
-▶ Windows 설정
 bash
 코드 복사
-setx GOOGLE_API_KEY "YOUR_API_KEY"
-VSCode 재시작 필요.
+pip freeze > requirements.txt
+4. Gemini API Key 환경변수 설정
+(1) 왜 코드에 Key를 넣으면 안 되는가?
+GitHub에 올라가면 즉시 유출
 
-🧠 5. FastAPI + ADK 서버(app.py) 작성
+제3자가 내 API로 마음껏 모델 호출 가능
+
+요금 폭탄 + 서비스 악용 위험
+
+API Key는 항상 OS 환경변수나 Secret Manager에만 보관해야 함
+
+(2) Windows 환경변수 등록
+bash
+코드 복사
+setx GOOGLE_API_KEY "YOUR_API_KEY_HERE"
+이후 터미널 / VSCode를 완전히 재시작해야 반영된다.
+
+5. FastAPI + ADK 서버(app.py) 구현
+(1) app.py 전체 코드
 python
 코드 복사
 from fastapi import FastAPI
@@ -480,6 +511,7 @@ from google.adk.tools import google_search
 
 import os
 
+# 1. 환경변수에서 Gemini API Key 로드
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise RuntimeError("환경변수 GOOGLE_API_KEY 필요")
@@ -487,7 +519,7 @@ if not api_key:
 os.environ["GOOGLE_API_KEY"] = api_key
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
 
-# ADK Agent 구성
+# 2. ADK Agent 구성
 root_agent = Agent(
     name="news_short_agent",
     model="gemini-2.5-flash-lite",
@@ -498,6 +530,7 @@ root_agent = Agent(
 
 runner = InMemoryRunner(agent=root_agent)
 
+# 3. FastAPI 앱 생성
 app = FastAPI()
 
 class ChatRequest(BaseModel):
@@ -506,82 +539,113 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
 
+# 4. /chat 엔드포인트: 프론트엔드와 통신할 API
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     result = await runner.run_debug(req.message)
     reply = getattr(result, "output_text", str(result))
     return ChatResponse(reply=reply)
-▶ 6. 서버 실행
+역할 정리:
+
+Agent : Gemini 모델 + 도구(google_search)를 묶은 에이전트
+
+InMemoryRunner : 요청마다 Agent를 실행하는 러너
+
+/chat : React가 호출할 단일 HTTP 엔드포인트
+
+6. 서버 실행 및 테스트
+(1) Uvicorn으로 FastAPI 서버 실행
 bash
 코드 복사
+cd python-agent
+venv\Scripts\activate
 python -m uvicorn app:app --reload --port 8000
-API 문서 확인:
-http://localhost:8000/docs
+(2) 동작 확인
+브라우저에서:
 
-⚠️ 7. venv를 GitHub에 올리면 안 되는 이유
-OS별 실행파일 포함 → 다른 컴퓨터에서 실행 불가
+API 문서: http://localhost:8000/docs
 
-용량 수백 MB 증가 → 레포 무거워짐
+/chat 엔드포인트 선택 후, 예시 요청:
 
-캐시/경로/민감 정보 포함
+json
+코드 복사
+{
+  "message": "오늘 한국 IT 뉴스 요약해줘"
+}
+200 OK 응답과 함께, LLM이 생성한 한국어 요약이 reply 필드로 반환되면 성공.
 
-팀 환경 충돌
+7. venv를 GitHub에 올리면 안 되는 이유
+(1) 문제점
+OS별 바이너리/실행파일 가득 → 다른 환경에서 재사용 불가
 
-Python 공식 문서에서도 업로드 금지
+용량 수백 MB까지 커져서 저장소가 불필요하게 비대해짐
 
-✔ GitHub에 올려야 하는 것
-app.py
+캐시, 경로, 잠재적 민감정보가 섞여 있을 수 있음
 
-requirements.txt
+팀 프로젝트에서 환경 충돌 유발
 
-README.md
+공식 Python 가이드에서도 가상환경은 VCS에 커밋하지 말 것을 권장
 
-.gitignore
+(2) 대신 GitHub에 올려야 할 것
+app.py (소스 코드)
 
-📄 8. .gitignore 설정
+requirements.txt (패키지 버전 스냅샷)
+
+README.md (세팅/사용법 문서)
+
+.gitignore (venv, 캐시, 빌드 산출물 제외 목록)
+
+8. .gitignore에 venv 및 캐시 추가
+(1) .gitignore 내용 예시
 gitignore
 코드 복사
 # Python venv
 venv/
 **/venv/
 
-# Cache files
+# Python bytecode / cache
 __pycache__/
 **/__pycache__/
 *.pyc
-이미 Git 추적 중이라면:
-
+(2) 이미 venv가 추적 중일 때
 bash
 코드 복사
 git rm -r --cached venv
-💾 9. Git Commit & Push
+이후 다시:
+
+bash
+코드 복사
+git status
+에서 venv/가 사라져 있으면 성공.
+
+9. Git Commit & Push
+(1) 스테이징 및 커밋
 bash
 코드 복사
 git add .
 git commit -m "Add python-agent with FastAPI + ADK setup and ignore venv"
-git push origin main
-🎯 10. 오늘 전체 작업 흐름 요약
-python-agent 디렉터리 생성
-
-가상환경 생성 및 활성화
-
-FastAPI + Uvicorn + GenAI + ADK 설치
-
-환경변수로 Gemini API Key 등록
-
-ADK Agent + FastAPI 서버(app.py) 구현
-
-/chat API 정상 동작 확인
-
-.gitignore로 venv 제거
-
-GitHub에 안전하게 commit & push 완료
-
-yaml
+(2) 원격 저장소로 푸시
+bash
 코드 복사
+git push origin main
+에러 없이 푸시가 끝나면, GitHub dev-diary 레포에서도:
 
----
+python-agent/ 디렉터리
 
-.gitignore로 venv 제거
+app.py, requirements.txt
 
-안전하게 GitHub에 commit & push 완료
+.gitignore 업데이트
+
+가 반영된 것을 확인할 수 있다.
+
+10. 오늘 작업 결과 정리
+단계 작업 내용 결과
+1 python-agent 디렉터리 분리 OGV(Spring Boot)와 독립된 AI Agent 서버 구조 확보
+2 venv 생성/활성화 프로젝트 전용 Python 환경 구성
+3 FastAPI + Uvicorn + google-genai + google-adk 설치 Gemini/ADK 기반 에이전트 실행 준비 완료
+4 환경변수에 GOOGLE_API_KEY 등록 API Key를 코드 밖으로 분리, 보안 강화
+5 app.py 구현 ADK Agent + FastAPI를 하나의 서버로 통합
+6 /chat 엔드포인트 테스트 200 OK + LLM 응답 확인
+7 .gitignore에 venv 추가 가상환경을 Git 추적 범위에서 제거
+8 requirements.txt 생성/관리 재설치 및 배포를 위한 패키지 스냅샷 확보
+9 GitHub에 commit & push dev-diary에 Python Agent 개발 기록 및 코드 반영 완료

@@ -411,7 +411,7 @@ REST 테스트 도구를 통해 API 안정성까지 확인할 수 있다.
 
 ---
 ## 📘 2025.11.17 – OGV Project: Python Agent 개발 기록
-🧩 1. Python Agent 개발 디렉터리 생성
+## 🧩 1. Python Agent 개발 디렉터리 생성
 
 기존 OGV 프로젝트(Spring Boot + React) 내부에
 python-agent/ 폴더를 새로 생성했다.
@@ -424,8 +424,8 @@ React 프론트엔드와 통신할 “독립 서버” 구축
 
 향후 벡터 DB + 뉴스 자동화 파이프라인의 기반 마련
 
-🧪 2. 가상환경(venv) 생성 및 활성화
-▶ Why 사용해야 하는가?
+## 🧪 2. 가상환경(venv) 생성 및 활성화
+### ▶ Why 사용해야 하는가?
 
 Python 패키지 충돌 방지
 
@@ -437,16 +437,16 @@ Python 패키지 충돌 방지
 
 “환경 설정은 venv”, “코드는 GitHub”로 역할 분리
 
-▶ 생성
+### ▶ 생성
 python -m venv venv
 
-▶ 활성화
+### ▶ 활성화
 venv\Scripts\activate
 
 
 터미널에 (venv) 표시되면 성공.
 
-📦 3. 필수 패키지 설치
+## 📦 3. 필수 패키지 설치
 pip install fastapi uvicorn[standard] google-genai google-adk
 
 
@@ -460,8 +460,8 @@ google-genai → Gemini API 공식 파이썬 SDK
 
 google-adk → Agent Development Kit (멀티 에이전트 구성 가능)
 
-🔐 4. 환경변수(API Key) 설정
-▶ 이유
+## 🔐 4. 환경변수(API Key) 설정
+### ▶ 이유
 
 API Key를 코드로 노출할 경우:
 
@@ -473,13 +473,13 @@ GitHub에 올라가서 즉시 유출됨
 
 → 코드에는 적지 말고, OS 환경변수에만 저장해야 함
 
-▶ Windows 환경변수 등록
+### ▶ Windows 환경변수 등록
 setx GOOGLE_API_KEY "여기_내_API_KEY"
 
 
 이후 VSCode 재시작.
 
-🧠 5. FastAPI + ADK 서버(app.py) 작성
+## 🧠 5. FastAPI + ADK 서버(app.py) 작성
 
 Kaggle Notebook의 ADK 예제를 기반으로
 로컬 FastAPI 서버에 통합.
@@ -499,7 +499,7 @@ if not api_key:
 os.environ["GOOGLE_API_KEY"] = api_key
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
 
-# ADK Agent 구성
+// ADK Agent 구성
 root_agent = Agent(
     name="news_short_agent",
     model="gemini-2.5-flash-lite",
@@ -524,7 +524,7 @@ async def chat(req: ChatRequest):
     reply = getattr(result, "output_text", str(result))
     return ChatResponse(reply=reply)
 
-▶ 6. 서버 실행
+## ▶ 6. 서버 실행
 python -m uvicorn app:app --reload --port 8000
 
 
@@ -535,7 +535,7 @@ http://localhost:8000/docs
 
 여기서 /chat 테스트 → 200 OK 응답 정상 동작 확인됨
 
-⚠️ 7. venv를 GitHub에 절대 올리면 안 되는 이유
+## ⚠️ 7. venv를 GitHub에 절대 올리면 안 되는 이유
 
 오늘 제일 중요한 학습 포인트.
 
@@ -563,11 +563,11 @@ README.md
 
 레포 루트에 .gitignore 추가:
 
-# Python venv
+// Python venv
 venv/
 **/venv/
 
-# Cache files
+// Cache files
 __pycache__/
 **/__pycache__/
 *.pyc
@@ -575,12 +575,12 @@ __pycache__/
 이미 Git이 추적 중이었다면:
 git rm -r --cached venv
 
-💾 9. Git Commit & Push
+## 💾 9. Git Commit & Push
 git add .
 git commit -m "Add python-agent with FastAPI + ADK setup and ignore venv"
 git push origin main
 
-🎯 10. 오늘 작업 전체 흐름 요약
+### 🎯 10. 오늘 작업 전체 흐름 요약
 
 python-agent 디렉토리 생성
 

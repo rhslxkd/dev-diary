@@ -410,80 +410,68 @@ DB 연결 설정 및 서버 실행 확인
 REST 테스트 도구를 통해 API 안정성까지 확인할 수 있다.
 
 ---
-## 📘 2025.11.17 – OGV Project: Python Agent 개발 기록
-## 🧩 1. Python Agent 개발 디렉터리 생성
+## 📘 2025.11.17 — OGV Project: Python Agent 개발 기록
 
-기존 OGV 프로젝트(Spring Boot + React) 내부에
-python-agent/ 폴더를 새로 생성했다.
+## 🧩 1. Python Agent 디렉터리 생성
 
-목적:
+OGV(Spring Boot + React) 프로젝트 내부에 `python-agent/` 디렉터리를 생성함.
 
-Google Gemini + ADK 기반 Agent 서버를 로컬에서 구현
+**목표**
+- Google Gemini + ADK 기반 Agent 서버 구축  
+- React 프론트엔드와 통신하는 독립 서버 구조  
+- 향후 벡터 DB + 뉴스 자동화 파이프라인 기반 마련  
 
-React 프론트엔드와 통신할 “독립 서버” 구축
 
-향후 벡터 DB + 뉴스 자동화 파이프라인의 기반 마련
+---
 
 ## 🧪 2. 가상환경(venv) 생성 및 활성화
-### ▶ Why 사용해야 하는가?
 
-Python 패키지 충돌 방지
-
-각 프로젝트마다 독립된 환경 제공
-
-시스템 전체 Python과 철저히 분리
-
-팀원이 다른 OS를 사용해도 같은 환경 재현 가능
-
-“환경 설정은 venv”, “코드는 GitHub”로 역할 분리
+### ✔ 왜 필요한가?
+- 패키지 충돌 방지  
+- 프로젝트별 독립 환경 제공  
+- OS 차이 제거  
+- “환경은 venv, 코드는 GitHub”로 역할 분리  
 
 ### ▶ 생성
+```bash
 python -m venv venv
-
-### ▶ 활성화
+▶ 활성화
+bash
+코드 복사
 venv\Scripts\activate
-
-
-터미널에 (venv) 표시되면 성공.
-
-## 📦 3. 필수 패키지 설치
+📦 3. 필수 패키지 설치
+bash
+코드 복사
 pip install fastapi uvicorn[standard] google-genai google-adk
+패키지 설명
 
+FastAPI: Python 경량 API 서버
 
-패키지 설명:
+Uvicorn: FastAPI 실행기 (Spring의 Tomcat 역할)
 
-fastapi → 경량 Python API 서버
+google-genai: Gemini 공식 Python SDK
 
-uvicorn → FastAPI 실행기 (Spring의 Tomcat 역할)
+google-adk: Agent Development Kit (멀티 에이전트 구성)
 
-google-genai → Gemini API 공식 파이썬 SDK
+🔐 4. Gemini API Key 환경변수 설정
+✔ 왜 코드에 Key를 쓰면 안 되는가?
+GitHub에 올라가는 순간 즉시 유출
 
-google-adk → Agent Development Kit (멀티 에이전트 구성 가능)
+제3자가 마음대로 API 호출
 
-## 🔐 4. 환경변수(API Key) 설정
-### ▶ 이유
+요금 폭탄 + 악용 위험 발생
 
-API Key를 코드로 노출할 경우:
+Key는 항상 OS 환경변수에만 저장
 
-GitHub에 올라가서 즉시 유출됨
+▶ Windows 설정
+bash
+코드 복사
+setx GOOGLE_API_KEY "YOUR_API_KEY"
+VSCode 재시작 필요.
 
-제3자가 마음대로 모델 호출 가능
-
-요금 폭탄, 서비스 악용 등 위험 발생
-
-→ 코드에는 적지 말고, OS 환경변수에만 저장해야 함
-
-### ▶ Windows 환경변수 등록
-setx GOOGLE_API_KEY "여기_내_API_KEY"
-
-
-이후 VSCode 재시작.
-
-## 🧠 5. FastAPI + ADK 서버(app.py) 작성
-
-Kaggle Notebook의 ADK 예제를 기반으로
-로컬 FastAPI 서버에 통합.
-
+🧠 5. FastAPI + ADK 서버(app.py) 작성
+python
+코드 복사
 from fastapi import FastAPI
 from pydantic import BaseModel
 from google.adk.agents import Agent
@@ -499,7 +487,7 @@ if not api_key:
 os.environ["GOOGLE_API_KEY"] = api_key
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "FALSE"
 
-// ADK Agent 구성
+# ADK Agent 구성
 root_agent = Agent(
     name="news_short_agent",
     model="gemini-2.5-flash-lite",
@@ -523,76 +511,76 @@ async def chat(req: ChatRequest):
     result = await runner.run_debug(req.message)
     reply = getattr(result, "output_text", str(result))
     return ChatResponse(reply=reply)
-
-## ▶ 6. 서버 실행
+▶ 6. 서버 실행
+bash
+코드 복사
 python -m uvicorn app:app --reload --port 8000
-
-
-확인 페이지:
-
+API 문서 확인:
 http://localhost:8000/docs
 
+⚠️ 7. venv를 GitHub에 올리면 안 되는 이유
+OS별 실행파일 포함 → 다른 컴퓨터에서 실행 불가
 
-여기서 /chat 테스트 → 200 OK 응답 정상 동작 확인됨
+용량 수백 MB 증가 → 레포 무거워짐
 
-## ⚠️ 7. venv를 GitHub에 절대 올리면 안 되는 이유
+캐시/경로/민감 정보 포함
 
-오늘 제일 중요한 학습 포인트.
+팀 환경 충돌
 
-🚫 왜 venv를 올리면 안 되는가?
+Python 공식 문서에서도 업로드 금지
 
-OS별 실행파일 포함 → 다른 컴퓨터에서 절대 안 돌아감
-
-수백 MB~1GB → Git 저장소 터짐
-
-Python 바이너리라 Git 관리 대상으로 적합하지 않음
-
-캐시/OS 경로/API credential 등 민감 정보 포함
-
-팀 프로젝트 환경 충돌을 유발
-
-공식 Python 문서도 “가상환경은 Git에 올리지 말라”고 명시
-
-✔ 대신 올려야 하는 것은?
+✔ GitHub에 올려야 하는 것
 app.py
+
 requirements.txt
+
 README.md
+
 .gitignore
 
-📄 8. venv를 gitignore로 제외
-
-레포 루트에 .gitignore 추가:
-
-// Python venv
+📄 8. .gitignore 설정
+gitignore
+코드 복사
+# Python venv
 venv/
 **/venv/
 
-// Cache files
+# Cache files
 __pycache__/
 **/__pycache__/
 *.pyc
+이미 Git 추적 중이라면:
 
-이미 Git이 추적 중이었다면:
+bash
+코드 복사
 git rm -r --cached venv
-
-## 💾 9. Git Commit & Push
+💾 9. Git Commit & Push
+bash
+코드 복사
 git add .
 git commit -m "Add python-agent with FastAPI + ADK setup and ignore venv"
 git push origin main
+🎯 10. 오늘 전체 작업 흐름 요약
+python-agent 디렉터리 생성
 
-### 🎯 10. 오늘 작업 전체 흐름 요약
+가상환경 생성 및 활성화
 
-python-agent 디렉토리 생성
+FastAPI + Uvicorn + GenAI + ADK 설치
 
-가상환경 생성 + 활성화
-
-FastAPI + Uvicorn + Google GenAI + ADK 설치
-
-환경변수에 Gemini API Key 등록
+환경변수로 Gemini API Key 등록
 
 ADK Agent + FastAPI 서버(app.py) 구현
 
-로컬 테스트 성공 (200 OK 응답)
+/chat API 정상 동작 확인
+
+.gitignore로 venv 제거
+
+GitHub에 안전하게 commit & push 완료
+
+yaml
+코드 복사
+
+---
 
 .gitignore로 venv 제거
 
